@@ -11,7 +11,6 @@ from src.constants import (
     IMAGES_MEAN, 
     IMAGES_STD
 )
-import random 
 from src.camera import CameraDevice
 from src.wifi_light import LightDevice
 from src.information_store import InformationStore
@@ -40,6 +39,8 @@ async def main():
         dropout=0.5
     )
     model.eval()
+    # Flag to indicate the if the last change in the light status was made by our ai model, and avoid storing that video buffer in the disk.
+    # We only want to save video buffers from real user interactions. 
     changed_by_ai = False
 
     while True: 
@@ -47,22 +48,25 @@ async def main():
         light_status = await light.get_light_info()
         frame = camera.capture_frame()
         print(f"Light: {light_status.on}, frame_shape: {frame.shape}")
+        # In each frame store the frame information. 
         information_store.store_frame(frame, light_status)
 
-        # Check if we detect a change in the lightning and we want to save this to the disk.
-        frames_range = information_store.get_range_from_end(count=FRAMES_TO_DETECT_CHANGE + 1)
-        if len(frames_range) == FRAMES_TO_DETECT_CHANGE + 1: 
-            last = frames_range[-1].light_information["on"]
-            first = frames_range[0].light_information["on"]
-            second = frames_range[1].light_information["on"]
+        # If we are not currently using the ai model to change the light status, 
+        # We will store video frames every time we detect a change in the lightning. 
+        if args.no_ai and not changed_by_ai: 
+            # Check if we detect a change in the lightning and we want to save this to the disk. To avoid noise, we check changes using the frames t and t-d
+            frames_range = information_store.get_range_from_end(count=FRAMES_TO_DETECT_CHANGE + 1)
+            if len(frames_range) == FRAMES_TO_DETECT_CHANGE + 1: 
+                last = frames_range[-1].light_information["on"]
+                first = frames_range[0].light_information["on"]
+                second = frames_range[1].light_information["on"]
 
-            if last != first and last == second: 
-                if args.no_ai and not changed_by_ai: 
+                if last != first and last == second: 
                     information_store.save_to_disk()
                     changed_by_ai = False
 
-        # predict camera next state (only if AI is enabled)
-        if not args.no_ai: 
+        # If ai is enabled, lets predict the light status and set the light status to true/false. 
+        elif not args.no_ai: 
             frames_range = information_store.get_range_from_end(count=FRAMES_SEQ_SIZE)
             if len(frames_range) >= FRAMES_SEQ_SIZE: 
                 X = torch.tensor(
