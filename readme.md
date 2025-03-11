@@ -2,6 +2,8 @@
 
 An intelligent lighting control system leveraging computer vision with a minimal hardware footprint.
 
+[Demo](https://www.youtube.com/shorts/tINytdX_a-E)
+
 ## Overview
 
 This project implements an AI-powered vision light system using:
