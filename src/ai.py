@@ -40,7 +40,7 @@ class VideoCNNLSTM(nn.Module):
         self.fc = nn.Linear(hidden_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, 1)
         self.dropout = nn.Dropout(dropout)
-        self.load_state_dict(torch.load("./model.pt"))
+        self.load_state_dict(torch.load("./models/model_5_1"))
 
     def forward(self, x):
         # x shape: (batch_size, frames, channels, height, width)
